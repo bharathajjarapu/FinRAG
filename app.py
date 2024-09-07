@@ -94,7 +94,7 @@ def get_conversational_chain():
     model = ChatGoogleGenerativeAI(
         model="gemini-1.5-flash-latest",
         temperature=0.3,
-        system_instruction="You are Lawy, a highly experienced attorney providing legal advice based on Indian laws.",
+        system_instruction="You are TaxWise AI, a highly experienced assistant providing tax advice based on Indian laws and Tax Regulations.",
     )
 
     prompt = PromptTemplate(
@@ -184,7 +184,7 @@ def main():
             st.session_state.messages = [
                 {
                     "role": "assistant",
-                    "content": "Hi I'm TaxWise AI, an AI Tax Advisor.",
+                    "content": "Hi I'm TaxWise AI, an AI Tax Saving Assistant.",
                 }
             ]
 
