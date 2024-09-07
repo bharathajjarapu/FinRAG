@@ -8,4 +8,4 @@ streamlit
 faiss-cpu
 fastembed
 googletrans
-sqlite3
+pysqlite3
