@@ -154,7 +154,7 @@ def main():
             with st.spinner("Redirecting to chat..."):
                 time.sleep(2)  # Simulate a loading time
             st.session_state.loading = False
-            st.experimental_rerun()
+            st.rerun()
 
     # Chat interface after authentication
     if st.session_state.authenticated and not st.session_state.loading:
