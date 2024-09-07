@@ -7,5 +7,4 @@ python-dotenv
 streamlit
 faiss-cpu
 fastembed
-googletrans
 sqlite3
