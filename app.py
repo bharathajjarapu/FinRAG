@@ -4,6 +4,7 @@ import sqlite3
 from dotenv import load_dotenv
 import streamlit as st
 from PyPDF2 import PdfReader
+import google.generativeai as genai
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import FastEmbedEmbeddings
 from langchain_community.vectorstores import FAISS
