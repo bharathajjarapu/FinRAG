@@ -63,18 +63,17 @@ def get_conversational_chain():
     chain = load_qa_chain(model, chain_type="stuff", prompt=prompt)
     return chain
 
-# Function to handle user input and provide a response
 def user_input(user_question):
     embeddings = FastEmbedEmbeddings()
     
     if os.path.exists("Faiss"):
-        new_db = FAISS.load_local("Faiss", embeddings)
+        new_db = FAISS.load_local("Faiss", embeddings, allow_dangerous_deserialization=True)
     else:
         pdf_files = [os.path.join("dataset", file) for file in os.listdir("dataset") if file.endswith(".pdf")]
         raw_text = get_pdf_text(pdf_files)
         text_chunks = get_text_chunks(raw_text)
         create_vector_store(text_chunks)
-        new_db = FAISS.load_local("Faiss", embeddings)
+        new_db = FAISS.load_local("Faiss", embeddings, allow_dangerous_deserialization=True)
     
     docs = new_db.similarity_search(user_question)
     chain = get_conversational_chain()
@@ -85,6 +84,7 @@ def user_input(user_question):
     }, return_only_outputs=True)
     
     return response["output_text"]
+
 
 # Streamlit app interface
 def main():
