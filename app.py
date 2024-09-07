@@ -16,29 +16,39 @@ import asyncio
 load_dotenv()
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
+
 # Database setup
 def create_users_table():
-    conn = sqlite3.connect('users.db')
+    conn = sqlite3.connect("users.db")
     c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS users
-                 (username TEXT PRIMARY KEY, password TEXT)''')
+    c.execute(
+        """CREATE TABLE IF NOT EXISTS users
+                 (username TEXT PRIMARY KEY, password TEXT)"""
+    )
     conn.commit()
     conn.close()
+
 
 def add_user(username, password):
-    conn = sqlite3.connect('users.db')
+    conn = sqlite3.connect("users.db")
     c = conn.cursor()
-    c.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, password))
+    c.execute(
+        "INSERT INTO users (username, password) VALUES (?, ?)", (username, password)
+    )
     conn.commit()
     conn.close()
 
+
 def validate_user(username, password):
-    conn = sqlite3.connect('users.db')
+    conn = sqlite3.connect("users.db")
     c = conn.cursor()
-    c.execute("SELECT * FROM users WHERE username=? AND password=?", (username, password))
+    c.execute(
+        "SELECT * FROM users WHERE username=? AND password=?", (username, password)
+    )
     user = c.fetchone()
     conn.close()
     return user
+
 
 # Function to get text from PDF files
 def get_pdf_text(pdf_docs):
@@ -49,11 +59,13 @@ def get_pdf_text(pdf_docs):
             text += page.extract_text()
     return text
 
+
 # Function to split text into manageable chunks
 def get_text_chunks(text):
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=50000, chunk_overlap=1000)
     chunks = text_splitter.split_text(text)
     return chunks
+
 
 # Function to create a vector store from text chunks
 def create_vector_store(text_chunks):
@@ -61,10 +73,11 @@ def create_vector_store(text_chunks):
     vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
     vector_store.save_local("Faiss")
 
+
 # Function to load and configure the conversational chain
 def get_conversational_chain():
     prompt_template = """
-        You are Taxy, a highly experienced accountant providing tax advice based on Indian Tax laws.
+        You are TaxWise AI, a highly experienced accountant providing tax advice based on Indian Tax laws.
         You will respond to the user's queries by leveraging your accounting and tax expertise and the Context Provided.
         Context: {context}
         Question: {question}
@@ -81,39 +94,50 @@ def get_conversational_chain():
     model = ChatGoogleGenerativeAI(
         model="gemini-1.5-flash-latest",
         temperature=0.3,
-        system_instruction="You are Lawy, a highly experienced attorney providing legal advice based on Indian laws."
+        system_instruction="You are Lawy, a highly experienced attorney providing legal advice based on Indian laws.",
     )
 
-    prompt = PromptTemplate(template=prompt_template, input_variables=["context", "question"])
+    prompt = PromptTemplate(
+        template=prompt_template, input_variables=["context", "question"]
+    )
     chain = load_qa_chain(model, chain_type="stuff", prompt=prompt)
     return chain
+
 
 def user_input(user_question):
     embeddings = FastEmbedEmbeddings()
 
     if os.path.exists("Faiss"):
-        new_db = FAISS.load_local("Faiss", embeddings, allow_dangerous_deserialization=True)
+        new_db = FAISS.load_local(
+            "Faiss", embeddings, allow_dangerous_deserialization=True
+        )
     else:
-        pdf_files = [os.path.join("dataset", file) for file in os.listdir("dataset") if file.endswith(".pdf")]
+        pdf_files = [
+            os.path.join("dataset", file)
+            for file in os.listdir("dataset")
+            if file.endswith(".pdf")
+        ]
         raw_text = get_pdf_text(pdf_files)
         text_chunks = get_text_chunks(raw_text)
         create_vector_store(text_chunks)
-        new_db = FAISS.load_local("Faiss", embeddings, allow_dangerous_deserialization=True)
+        new_db = FAISS.load_local(
+            "Faiss", embeddings, allow_dangerous_deserialization=True
+        )
 
     docs = new_db.similarity_search(user_question)
     chain = get_conversational_chain()
 
-    response = chain({
-        "input_documents": docs,
-        "question": user_question
-    }, return_only_outputs=True)
+    response = chain(
+        {"input_documents": docs, "question": user_question}, return_only_outputs=True
+    )
 
     return response["output_text"]
 
+
 # Streamlit app interface
 def main():
-    st.set_page_config("Taxy", page_icon=":scales:", layout="centered")
-    st.header("Taxy: AI Tax Advisor :scales:")
+    st.set_page_config("TaxWise AI", page_icon=":scales:", layout="centered")
+    st.header("TaxWise AI: AI Tax Advisor :scales:")
 
     # Create users table if not exists
     create_users_table()
@@ -141,7 +165,9 @@ def main():
         with signup_tab:
             st.subheader("Sign Up")
             new_username = st.text_input("New Username", key="signup_username")
-            new_password = st.text_input("New Password", type="password", key="signup_password")
+            new_password = st.text_input(
+                "New Password", type="password", key="signup_password"
+            )
             if st.button("Sign Up"):
                 if new_username and new_password:
                     try:
@@ -155,7 +181,12 @@ def main():
     if st.session_state.authenticated:
 
         if "messages" not in st.session_state.keys():
-            st.session_state.messages = [{"role": "assistant", "content": "Hi I'm Taxy, an AI Tax Advisor."}]
+            st.session_state.messages = [
+                {
+                    "role": "assistant",
+                    "content": "Hi I'm TaxWise AI, an AI Tax Advisor.",
+                }
+            ]
 
         for message in st.session_state.messages:
             with st.chat_message(message["role"]):
@@ -178,12 +209,18 @@ def main():
                     message = {"role": "assistant", "content": response}
                     st.session_state.messages.append(message)
 
+
 def prepare_data():
     if not os.path.exists("Faiss"):
-        pdf_files = [os.path.join("dataset", file) for file in os.listdir("dataset") if file.endswith(".pdf")]
+        pdf_files = [
+            os.path.join("dataset", file)
+            for file in os.listdir("dataset")
+            if file.endswith(".pdf")
+        ]
         raw_text = get_pdf_text(pdf_files)
         text_chunks = get_text_chunks(raw_text)
         create_vector_store(text_chunks)
+
 
 if __name__ == "__main__":
     prepare_data()
