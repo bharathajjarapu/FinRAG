@@ -1,4 +1,5 @@
 import os
+import sqlite3
 from dotenv import load_dotenv
 import streamlit as st
 from PyPDF2 import PdfReader
@@ -14,6 +15,30 @@ import asyncio
 # Load environment variables
 load_dotenv()
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+
+# Database setup
+def create_users_table():
+    conn = sqlite3.connect('users.db')
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS users
+                 (username TEXT PRIMARY KEY, password TEXT)''')
+    conn.commit()
+    conn.close()
+
+def add_user(username, password):
+    conn = sqlite3.connect('users.db')
+    c = conn.cursor()
+    c.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, password))
+    conn.commit()
+    conn.close()
+
+def validate_user(username, password):
+    conn = sqlite3.connect('users.db')
+    c = conn.cursor()
+    c.execute("SELECT * FROM users WHERE username=? AND password=?", (username, password))
+    user = c.fetchone()
+    conn.close()
+    return user
 
 # Function to get text from PDF files
 def get_pdf_text(pdf_docs):
@@ -85,37 +110,76 @@ def user_input(user_question):
     
     return response["output_text"]
 
-
 # Streamlit app interface
 def main():
-    st.set_page_config("Taxy", page_icon=":scales:")
+    st.set_page_config("Taxy", page_icon=":scales:", layout="centered")
     st.header("Taxy: AI Tax Advisor :scales:")
 
-    if "messages" not in st.session_state.keys():
-        st.session_state.messages = [{"role": "assistant", "content": "Hi I'm Taxy, an AI Tax Advisor."}]
+    # Create users table if not exists
+    create_users_table()
 
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.write(message["content"])
+    # Login and Signup functionality
+    if "authenticated" not in st.session_state:
+        st.session_state.authenticated = False
 
-    prompt = st.chat_input("Type your question here...")
+    if not st.session_state.authenticated:
+        login_tab, signup_tab = st.tabs(["Login", "Sign Up"])
 
-    if prompt:
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.write(prompt)
+        with login_tab:
+            st.subheader("Login")
+            username = st.text_input("Username", key="login_username")
+            password = st.text_input("Password", type="password", key="login_password")
+            if st.button("Login"):
+                user = validate_user(username, password)
+                if user:
+                    st.session_state.authenticated = True
+                    st.success("Login successful!")
+                    st.experimental_rerun()  # Force page reload to show chatbot interface
+                else:
+                    st.error("Invalid username or password.")
+        
+        with signup_tab:
+            st.subheader("Sign Up")
+            new_username = st.text_input("New Username", key="signup_username")
+            new_password = st.text_input("New Password", type="password", key="signup_password")
+            if st.button("Sign Up"):
+                if new_username and new_password:
+                    try:
+                        add_user(new_username, new_password)
+                        st.success("Signup successful! Please login.")
+                    except sqlite3.IntegrityError:
+                        st.error("Username already exists. Try a different one.")
+                else:
+                    st.error("Please fill in both fields.")
 
-        if st.session_state.messages[-1]["role"] != "assistant":
-            with st.chat_message("assistant"):
-                with st.spinner("Thinking..."):
-                    response = user_input(prompt)
-                    st.write(response)
+    # Chat interface after authentication
+    if st.session_state.authenticated:
+        st.subheader("Welcome to Taxy AI Chatbot!")
+        
+        if "messages" not in st.session_state.keys():
+            st.session_state.messages = [{"role": "assistant", "content": "Hi I'm Taxy, an AI Tax Advisor."}]
 
-            if response is not None:
-                message = {"role": "assistant", "content": response}
-                st.session_state.messages.append(message)
+        for message in st.session_state.messages:
+            with st.chat_message(message["role"]):
+                st.write(message["content"])
 
-# Process PDF files and create vector store if not already available
+        prompt = st.chat_input("Type your question here...")
+
+        if prompt:
+            st.session_state.messages.append({"role": "user", "content": prompt})
+            with st.chat_message("user"):
+                st.write(prompt)
+
+            if st.session_state.messages[-1]["role"] != "assistant":
+                with st.chat_message("assistant"):
+                    with st.spinner("Thinking..."):
+                        response = user_input(prompt)
+                        st.write(response)
+
+                if response is not None:
+                    message = {"role": "assistant", "content": response}
+                    st.session_state.messages.append(message)
+
 def prepare_data():
     if not os.path.exists("Faiss"):
         pdf_files = [os.path.join("dataset", file) for file in os.listdir("dataset") if file.endswith(".pdf")]
