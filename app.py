@@ -10,7 +10,6 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.chains.question_answering import load_qa_chain
 from langchain.prompts import PromptTemplate
 import google.generativeai as genai
-import asyncio
 
 # Load environment variables
 load_dotenv()
@@ -71,13 +70,6 @@ def get_conversational_chain():
         Answer:
     """
     
-    # Ensure there is an event loop in the current thread
-    try:
-        asyncio.get_running_loop()
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-    
     model = ChatGoogleGenerativeAI(
         model="gemini-1.5-flash-latest",
         temperature=0.3,
@@ -134,7 +126,6 @@ def main():
                 if user:
                     st.session_state.authenticated = True
                     st.success("Login successful!")
-                    st.experimental_rerun()  # Force page reload to show chatbot interface
                 else:
                     st.error("Invalid username or password.")
         
