@@ -1,4 +1,5 @@
 import os
+import time
 import sqlite3
 from dotenv import load_dotenv
 import streamlit as st
@@ -9,7 +10,6 @@ from langchain_community.vectorstores import FAISS
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.chains.question_answering import load_qa_chain
 from langchain.prompts import PromptTemplate
-import google.generativeai as genai
 
 # Load environment variables
 load_dotenv()
@@ -104,17 +104,21 @@ def user_input(user_question):
 
 # Streamlit app interface
 def main():
-    st.set_page_config("Taxy", page_icon=":scales:", layout="centered")
-    st.header("Taxy: AI Tax Advisor :scales:")
+    st.set_page_config("FinTax AI", page_icon=":scales:", layout="centered")
+    st.title("FinTax: AI Tax Saving Assistant :scales:")
 
     # Create users table if not exists
     create_users_table()
 
-    # Login and Signup functionality
+    # Initialize session state for authentication
     if "authenticated" not in st.session_state:
         st.session_state.authenticated = False
 
+    if "loading" not in st.session_state:
+        st.session_state.loading = False
+
     if not st.session_state.authenticated:
+        # Login/Signup page
         login_tab, signup_tab = st.tabs(["Login", "Sign Up"])
 
         with login_tab:
@@ -125,14 +129,15 @@ def main():
                 user = validate_user(username, password)
                 if user:
                     st.session_state.authenticated = True
+                    st.session_state.loading = True
                     st.success("Login successful!")
                 else:
                     st.error("Invalid username or password.")
         
         with signup_tab:
             st.subheader("Sign Up")
-            new_username = st.text_input("New Username", key="signup_username")
-            new_password = st.text_input("New Password", type="password", key="signup_password")
+            new_username = st.text_input("Username", key="signup_username")
+            new_password = st.text_input("Password", type="password", key="signup_password")
             if st.button("Sign Up"):
                 if new_username and new_password:
                     try:
@@ -143,33 +148,44 @@ def main():
                 else:
                     st.error("Please fill in both fields.")
 
+        # Handle loading animation after successful login
+        if st.session_state.loading:
+            with st.spinner("Redirecting to chat..."):
+                time.sleep(2)  # Simulate a loading time
+            st.session_state.loading = False
+            st.experimental_rerun()
+
     # Chat interface after authentication
-    if st.session_state.authenticated:
+    if st.session_state.authenticated and not st.session_state.loading:
         st.subheader("Welcome to Taxy AI Chatbot!")
         
-        if "messages" not in st.session_state.keys():
+        if "messages" not in st.session_state:
             st.session_state.messages = [{"role": "assistant", "content": "Hi I'm Taxy, an AI Tax Advisor."}]
 
-        for message in st.session_state.messages:
-            with st.chat_message(message["role"]):
-                st.write(message["content"])
+        chat_expander = st.expander("Chat")
+        with chat_expander:
+            # Display chat messages
+            for message in st.session_state.messages:
+                if message["role"] == "user":
+                    st.markdown(f"**You:** {message['content']}")
+                else:
+                    st.markdown(f"**Taxy:** {message['content']}")
 
-        prompt = st.chat_input("Type your question here...")
+        # Prompt for user input
+        prompt = st.text_input("Ask your question here:", key="user_input")
 
-        if prompt:
+        if st.button("Send") and prompt:
             st.session_state.messages.append({"role": "user", "content": prompt})
-            with st.chat_message("user"):
-                st.write(prompt)
 
-            if st.session_state.messages[-1]["role"] != "assistant":
-                with st.chat_message("assistant"):
-                    with st.spinner("Thinking..."):
-                        response = user_input(prompt)
-                        st.write(response)
+            # Simulate thinking
+            with st.spinner("Taxy is thinking..."):
+                response = user_input(prompt)
 
-                if response is not None:
-                    message = {"role": "assistant", "content": response}
-                    st.session_state.messages.append(message)
+            if response:
+                st.session_state.messages.append({"role": "assistant", "content": response})
+
+        st.markdown("---")
+        st.write("Type your query above to get started. Taxy will assist you with Indian tax-related questions.")
 
 def prepare_data():
     if not os.path.exists("Faiss"):
