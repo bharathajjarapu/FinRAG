@@ -153,7 +153,6 @@ def main():
                     st.error("Please fill in both fields.")
 
     if st.session_state.authenticated:
-        st.subheader("Welcome to Taxy AI Chatbot!")
 
         if "messages" not in st.session_state.keys():
             st.session_state.messages = [{"role": "assistant", "content": "Hi I'm Taxy, an AI Tax Advisor."}]
