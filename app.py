@@ -137,7 +137,7 @@ def user_input(user_question):
 # Streamlit app interface
 def main():
     st.set_page_config("TaxWise AI", page_icon=":scales:", layout="centered")
-    st.header("TaxWise AI: AI Tax Advisor :scales:")
+    st.header("TaxWise AI: AI Tax Saving Assistant :scales:")
 
     # Create users table if not exists
     create_users_table()
